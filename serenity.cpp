@@ -248,7 +248,7 @@ public:
     }
 
     void status_bar(const char *text) {
-        m_statusbar->set_text(text);
+        m_statusbar->set_text(MUST(String::from_utf8(StringView { text, strlen(text) })));
     }
 
     bool wants_statusbar() {
@@ -484,7 +484,7 @@ void create_preset_menu(NonnullRefPtr<GUI::Menu> menu, Frontend& frontend, prese
             menu->add_action(action);
         }
         else {
-            auto& submenu = menu->add_submenu(preset->title);
+            auto submenu = menu->add_submenu(String::from_utf8(StringView { preset->title, strlen(preset->title) }).release_value_but_fixme_should_propagate_errors());
             create_preset_menu(submenu, frontend, preset->submenu);
         }
     }
@@ -493,15 +493,15 @@ void create_preset_menu(NonnullRefPtr<GUI::Menu> menu, Frontend& frontend, prese
 ErrorOr<int> serenity_main(Main::Arguments arguments) {
     TRY(Core::System::pledge("stdio rpath accept wpath cpath recvfd sendfd unix fattr"));
 
-    auto app = TRY(GUI::Application::try_create(arguments));
+    auto app = TRY(GUI::Application::create(arguments));
 
     auto window = TRY(GUI::Window::try_create());
     window->set_title(thegame.name);
     window->set_resizable(true);
     window->resize(400, 400);
 
-    auto frontend = TRY(window->set_main_widget<Frontend>());
-    (void)TRY(frontend->try_set_layout<GUI::VerticalBoxLayout>());
+    auto frontend = window->set_main_widget<Frontend>();
+    frontend->set_layout<GUI::VerticalBoxLayout>();
 
     if (frontend->wants_statusbar()) {
         auto statusbar = TRY(frontend->try_add<GUI::Statusbar>());
@@ -510,7 +510,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments) {
 
     frontend->new_game();
 
-    auto game_menu = TRY(window->try_add_menu("&Game"));
+    auto game_menu = window->add_menu("&Game"_string);
     game_menu->add_action(GUI::Action::create("&New Game", [&](auto&) {
         frontend->new_game();
     }));
@@ -526,7 +526,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments) {
 
     auto presets = frontend->get_presets();
     if (presets) {
-        auto presets_menu = TRY(window->try_add_menu("&Type"));
+        auto presets_menu = window->add_menu("&Type"_string);
         create_preset_menu(presets_menu, frontend, presets);
     }
 
