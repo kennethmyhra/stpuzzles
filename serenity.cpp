@@ -469,7 +469,7 @@ struct param_ref {
 
 Vector<struct param_ref> g_params;
 
-void create_preset_menu(NonnullRefPtr<GUI::Menu> menu, Frontend& frontend, preset_menu* presets, const int id = 0) {
+ErrorOr<void> create_preset_menu(NonnullRefPtr<GUI::Menu> menu, Frontend& frontend, preset_menu* presets, const int id = 0) {
     for (int i = 0; i < presets->n_entries; i++) {
         auto* preset = &presets->entries[i];
         if (preset->params) {
@@ -484,10 +484,11 @@ void create_preset_menu(NonnullRefPtr<GUI::Menu> menu, Frontend& frontend, prese
             menu->add_action(action);
         }
         else {
-            auto submenu = menu->add_submenu(String::from_utf8(StringView { preset->title, strlen(preset->title) }).release_value_but_fixme_should_propagate_errors());
-            create_preset_menu(submenu, frontend, preset->submenu);
+            auto submenu = menu->add_submenu(TRY(String::from_utf8(StringView { preset->title, strlen(preset->title) })));
+            TRY(create_preset_menu(submenu, frontend, preset->submenu));
         }
     }
+    return {};
 }
 
 ErrorOr<int> serenity_main(Main::Arguments arguments) {
@@ -527,7 +528,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments) {
     auto presets = frontend->get_presets();
     if (presets) {
         auto presets_menu = window->add_menu("&Type"_string);
-        create_preset_menu(presets_menu, frontend, presets);
+        TRY(create_preset_menu(presets_menu, frontend, presets));
     }
 
     window->show();
